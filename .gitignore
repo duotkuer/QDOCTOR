@@ -7,8 +7,8 @@ __pycache__/
 /vector_store/ 
 
 # Frontend Ignores (Example)
-/frontend/node_modules/
-/frontend/dist/
+/Frontend/node_modules/
+/Frontend/dist/
 
 # System/IDE Ignores
 .DS_Store
