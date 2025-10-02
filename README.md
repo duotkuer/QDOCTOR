@@ -1,89 +1,84 @@
-# QDoctor Agent: System Documentation & Architecture
+# QDOCTOR
 
-**Version:** 1.0  
-**Date:** September 27, 2025  
+QDOCTOR is an application scaffold for a doctor/patient assistant system. The repository contains a Python-based Backend and a Frontend. This README describes the overall project, how to set up both parts locally, and common housekeeping notes.
 
----
+## Repository layout
+- Backend/ — Python API, services, and server code (primary application logic)
+- Frontend/ — Optional UI assets (React/Vue/other) if present
+- vector_store/ — Local vector/cache storage (ignored by git)
 
-This project provides a robust, production-ready AI agent designed to assist mental health professionals by answering questions based on a curated library of PDF documents.
+## Goals
+- Provide a minimal, production-approachable backend for clinical assistant features.
+- Optionally serve a frontend UI that interacts with the backend API.
+- Keep secrets out of source control and provide clear local development steps.
 
-It uses a Retrieval-Augmented Generation (RAG) architecture with a persistent vector store, a two-level semantic cache, and input/output guardrails for safety and reliability.
+## Quickstart — Backend (Python)
+Prerequisites:
+- Python 3.9+
+- pip
 
-## Features
+Steps:
+1. Open a terminal and change directory:
+   - cd Backend
+2. Create and activate a virtual environment:
+   - Windows: python -m venv .venv && .\.venv\Scripts\Activate
+   - macOS/Linux: python -m venv .venv && source .venv/bin/activate
+3. Install dependencies:
+   - pip install -r requirements.txt
+4. Configure environment:
+   - Copy `.env.example` to `.env` and fill required values.
+   - Do NOT commit `.env`.
+5. Start the backend:
+   - Follow Backend's entrypoint (e.g., uvicorn app.main:app --reload) or the command documented in Backend.
+6. Verify:
+   - Open the API URL (e.g., http://localhost:8000) or run provided health checks.
 
-- **FastAPI Backend**: A high-performance web server for handling queries.
-- **Persistent RAG**: Uses ChromaDB to store document embeddings, so data ingestion is a one-time process.
-- **Semantic Caching**: A two-level cache (exact-match and semantic similarity) to provide instant answers to repeated or similar questions.
-- **Safety Guardrails**: Validates and sanitizes both user input and LLM output to ensure safety and prevent data leakage.
-- **Modular & Scalable**: The code is organized into logical services, making it easy to maintain and extend.
-- **Powered by Groq**: Optimized for high-speed inference using the Groq LPU™.
+## Quickstart — Frontend (if present)
+Prerequisites:
+- Node.js (LTS) and npm/yarn
 
-## Setup Instructions
+Steps:
+1. cd Frontend
+2. Install packages:
+   - npm install or yarn
+3. Set any frontend environment variables (see Frontend/.env.example)
+4. Start the dev server:
+   - npm start or yarn start
+5. The frontend should proxy to the backend or be configured to call backend API endpoints.
 
-### 1. Project Structure
+## Environment & Secrets
+- All environment files are ignored by .gitignore. Use `.env.example` as a template.
+- Never commit secrets, API keys, or private credentials.
+- For CI, use your provider's secret management.
 
-Ensure your project is organized with the following structure:
+## Common housekeeping
+- If there is an accidental nested git repository at Backend/.git, remove it to avoid problems:
+  - Delete the Backend/.git directory (or use any provided script, e.g., scripts/remove-backend-git.ps1).
+- The vector_store/ directory is ignored; clear it locally if you need to reset caches.
+- Keep the top-level .git repository as the single source of truth.
 
-```
-/mental_health_agent
-|-- /app
-|-- /scripts
-|-- /pdfs/
-|-- .env
-|-- requirements.txt
-|-- README.md
-```
+## Testing & Linting
+- Run backend tests where provided (e.g., pytest in Backend).
+- Run frontend tests via npm/yarn test if applicable.
+- Use linters (flake8, black for Python; ESLint/Prettier for JS) as configured.
 
-### 2. Create a Python Environment
+## Development workflow
+- Branch from main for features/fixes.
+- Open pull requests with clear descriptions and tests where appropriate.
+- Keep commits focused and atomic.
 
-It's highly recommended to use a virtual environment.
+## Troubleshooting
+- Backend won't start: verify Python version, virtualenv activation, and .env variables.
+- Frontend can't reach backend: check CORS settings, proxy configuration, and backend port.
+- Unexpected nested .git: remove Backend/.git and reinitialize only if you intend a sub-repo.
 
-```bash
-python -m venv venv
-source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
-```
+## Contributing
+- Add issues for changes and link design/behavior proposals.
+- Follow coding standards used in Backend and Frontend.
+- Include tests for new features and document behavior.
 
-### 3. Install Dependencies
+## License
+Add your project license here (e.g., MIT, Apache-2.0). Replace this section with the chosen license text or a link to LICENSE.
 
-Install all the required packages from the `requirements.txt` file.
-
-```bash
-pip install -r requirements.txt
-```
-
-### 4. Configure Environment Variables
-
-Create a file named `.env` in the root of the project directory and add your Groq API key:
-
-```
-GROQ_API_KEY="your_groq_api_key_here"
-```
-
-### 5. Add PDF Documents
-
-Place all your mental health PDF documents inside the `/pdfs` directory.
-
-### 6. Ingest the Data (One-Time Step)
-
-Run the ingestion script to process your PDFs and build the vector database. This only needs to be done once, or whenever you add/change the documents in the `/pdfs` folder.
-
-```bash
-python scripts/ingest.py
-```
-You will see output indicating the number of chunks indexed and that the database has been saved.
-
-### 7. Run the Application Server
-
-Start the FastAPI server using uvicorn.
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
-```
-The `--reload` flag is useful for development, as it automatically restarts the server when you make code changes.
-
-### 8. Use the Agent
-
-The API is now live. You can interact with it via its documentation, which is automatically generated by FastAPI.
-
-- **Open your browser** and go to: `http://127.0.0.1:8000/docs`
-- **Use the `/ask` endpoint**: Click on it, then "Try it out", enter your question, and execute.
+## Contact
+For questions or help, add maintainer contact information or link to your issue tracker.
