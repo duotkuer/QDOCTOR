@@ -5,206 +5,85 @@
 
 ---
 
-## 1. Overview 📜
+This project provides a robust, production-ready AI agent designed to assist mental health professionals by answering questions based on a curated library of PDF documents.
 
-QDoctor is a specialized AI agent designed to serve as a secure, reliable, and context-aware assistant for doctors, therapists, and other professionals in the mental health sector.  
+It uses a Retrieval-Augmented Generation (RAG) architecture with a persistent vector store, a two-level semantic cache, and input/output guardrails for safety and reliability.
 
-Its primary function is to answer queries by retrieving information from a curated knowledge base of trusted clinical documents, research papers, and policy guidelines.  
+## Features
 
-The agent is built with a **multi-layered security and reliability architecture**, ensuring responses are not only accurate but also safe, private, and compliant with healthcare standards.  
+- **FastAPI Backend**: A high-performance web server for handling queries.
+- **Persistent RAG**: Uses ChromaDB to store document embeddings, so data ingestion is a one-time process.
+- **Semantic Caching**: A two-level cache (exact-match and semantic similarity) to provide instant answers to repeated or similar questions.
+- **Safety Guardrails**: Validates and sanitizes both user input and LLM output to ensure safety and prevent data leakage.
+- **Modular & Scalable**: The code is organized into logical services, making it easy to maintain and extend.
+- **Powered by Groq**: Optimized for high-speed inference using the Groq LPU™.
 
-### 1.1 Core Principles
+## Setup Instructions
 
-- **Accuracy**: Answers are grounded in a vetted, private knowledge base using a Retrieval-Augmented Generation (RAG) model.  
-- **Security**: Multi-layered guardrails prevent the leakage of Protected Health Information (PHI) and protect the system from malicious prompts.  
-- **Efficiency**: An integrated caching layer provides instantaneous responses to previously answered questions, reducing latency and computational cost.  
-- **Reliability**: Includes self-correction and output validation to prevent hallucinations and ensure responses are aligned with clinical standards.  
-- **Domain-Specificity**: Strictly limited to the domain of mental health and associated policies.  
+### 1. Project Structure
 
----
+Ensure your project is organized with the following structure:
 
-## 2. System Architecture & Workflow 🧠
-
-The agent operates through a **sequential, multi-stage pipeline**, where each stage is modular and responsible for a specific task.  
-
-### Workflow Breakdown
-
-1. **Query Ingestion** → User submits a query through a secure API endpoint.  
-2. **Cache Check** → High-speed cache (Redis) checks if the query has been answered before.  
-   - **Cache Hit** → Stored validated answer returned immediately.  
-   - **Cache Miss** → Proceeds to RAG retrieval.  
-3. **Context Construction (RAG)**  
-   - Query converted into vector embeddings.  
-   - Similarity search performed on vector DB (DSM-5, NICE guidelines, clinical trials).  
-   - Top-k chunks retrieved as context.  
-4. **Input Guardrail**  
-   - **PII/PHI Sanitization**: Redacts sensitive info.  
-   - **Prompt Injection Defense**: Blocks malicious instructions.  
-5. **LLM Gateway**  
-   - Routes to best-suited LLM (precise vs. fast).  
-   - Formats inputs into structured prompts.  
-   - Generates draft response.  
-6. **Scoring & Self-Correction (Optional)**  
-   - Draft scored for factual consistency.  
-   - If low, triggers regeneration.  
-7. **Output Guardrail**  
-   - **Hallucination & Contradiction Check**.  
-   - **Safety & Tone Analysis**.  
-   - **Policy Enforcement**: Returns canned fallback if validation fails.  
-8. **Response Delivery & Cache Update**  
-   - Final response delivered to user.  
-   - Query + answer stored in cache.  
-
----
-
-## 3. Codebase Architecture 💻
-
-```plaintext
-qdoctor_agent/
-├── main.py                 # API Entrypoint (FastAPI)
-├── orchestration/
-│   ├── __init__.py
-│   └── agent_pipeline.py   # Main agent logic and workflow conductor
-├── components/
-│   ├── __init__.py
-│   ├── cache_manager.py    # Redis caching logic
-│   ├── rag_retriever.py    # Vector store interaction and context retrieval
-│   ├── guardrails.py       # Input and Output validation modules
-│   └── llm_gateway.py      # LLM API interaction, routing, and prompting
-├── config/
-│   ├── __init__.py
-│   └── settings.py         # Configuration management (Pydantic)
-├── prompts/
-│   ├── __init__.py
-│   └── templates.py        # Stores all prompt templates
-├── knowledge_base/
-│   ├── documents/          # Raw source documents (PDFs, TXTs)
-│   └── ingest.py           # Script to process and load docs into vector store
-├── tests/
-│   ├── test_guardrails.py
-│   └── test_pipeline.py
-├── .env                    # Environment variables (API keys, DB URIs)
-├── requirements.txt        # Python dependencies
-└── Dockerfile              # Containerization for deployment
+```
+/mental_health_agent
+|-- /app
+|-- /scripts
+|-- /pdfs/
+|-- .env
+|-- requirements.txt
+|-- README.md
 ```
 
----
+### 2. Create a Python Environment
 
-## 4. File-by-File Implementation Details 📝
+It's highly recommended to use a virtual environment.
 
-### `main.py` (API Entrypoint)
-
-- Exposes functionality via **FastAPI**.  
-- Provides `/ask` endpoint.  
-- Handles query validation, orchestration call, and error handling.  
-
-**Pseudocode Example:**
-
-```python
-from fastapi import FastAPI, HTTPException
-from orchestration.agent_pipeline import QDoctorAgent
-from pydantic import BaseModel
-
-app = FastAPI(title="QDoctor API")
-agent = QDoctorAgent()
-
-class QueryRequest(BaseModel):
-    question: str
-
-@app.post("/ask")
-async def ask_qdoctor(request: QueryRequest):
-    try:
-        response = agent.run(request.question)
-        return {"answer": response}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+```bash
+python -m venv venv
+source venv/bin/activate  # On Windows, use `venv\Scripts\activate`
 ```
 
----
+### 3. Install Dependencies
 
-### `orchestration/agent_pipeline.py` (Orchestrator)
+Install all the required packages from the `requirements.txt` file.
 
-- Core workflow controller.  
-- Connects cache, retriever, guardrails, and LLM.  
-
-**Pseudocode Example:**
-
-```python
-from components.cache_manager import CacheManager
-from components.rag_retriever import RAGRetriever
-from components.guardrails import InputGuardrail, OutputGuardrail
-from components.llm_gateway import LLMGateway
-
-class QDoctorAgent:
-    def __init__(self):
-        self.cache = CacheManager()
-        self.retriever = RAGRetriever()
-        self.input_guardrail = InputGuardrail()
-        self.output_guardrail = OutputGuardrail()
-        self.llm = LLMGateway()
-
-    def run(self, query: str) -> str:
-        # 1. Cache Check
-        cached_response = self.cache.get(query)
-        if cached_response:
-            return cached_response
-
-        # 2. Context Construction
-        context = self.retriever.retrieve_context(query)
-        if not context:
-            return "I do not have enough information to answer that question."
-
-        # 3. Input Guardrail
-        is_safe, sanitized_query = self.input_guardrail.validate(query)
-        if not is_safe:
-            raise ValueError("Input failed security checks.")
-
-        # 4. LLM Gateway
-        raw_response = self.llm.generate(sanitized_query, context)
-
-        # 5. Output Guardrail
-        is_valid, final_response = self.output_guardrail.validate(raw_response, context)
-        if not is_valid:
-            return "My generated response failed validation. I cannot provide a reliable answer."
-
-        # 6. Cache Update
-        self.cache.set(query, final_response)
-        return final_response
+```bash
+pip install -r requirements.txt
 ```
 
----
+### 4. Configure Environment Variables
 
-### `components/rag_retriever.py`
+Create a file named `.env` in the root of the project directory and add your Groq API key:
 
-- Manages vector DB queries.  
-- Embeds queries and retrieves top-k relevant docs.  
+```
+GROQ_API_KEY="your_groq_api_key_here"
+```
 
----
+### 5. Add PDF Documents
 
-### `components/guardrails.py`
+Place all your mental health PDF documents inside the `/pdfs` directory.
 
-- **InputGuardrail** → Sanitizes PII, prevents injection.  
-- **OutputGuardrail** → Validates factuality, safety, tone.  
+### 6. Ingest the Data (One-Time Step)
 
----
+Run the ingestion script to process your PDFs and build the vector database. This only needs to be done once, or whenever you add/change the documents in the `/pdfs` folder.
 
-### `components/llm_gateway.py`
+```bash
+python scripts/ingest.py
+```
+You will see output indicating the number of chunks indexed and that the database has been saved.
 
-- Abstracts LLM API calls.  
-- Handles routing and prompt formatting.  
-- Uses `prompts/templates.py` for consistency.  
+### 7. Run the Application Server
 
----
+Start the FastAPI server using uvicorn.
 
-## 5. Key Technologies & Dependencies 🛠️
+```bash
+uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+The `--reload` flag is useful for development, as it automatically restarts the server when you make code changes.
 
-- **Web Framework**: FastAPI, Uvicorn  
-- **Orchestration/LLM Framework**: LangChain or LlamaIndex  
-- **Vector Database**: ChromaDB (local), Pinecone, or Weaviate (cloud)  
-- **Caching**: Redis  
-- **Guardrails**: NVIDIA NeMo Guardrails, Guardrails AI, or custom implementation  
-- **Configuration**: Pydantic  
-- **LLM Providers**: OpenAI, Anthropic (Claude), Google (Gemini)  
-- **Containerization**: Docker  
+### 8. Use the Agent
 
----
+The API is now live. You can interact with it via its documentation, which is automatically generated by FastAPI.
+
+- **Open your browser** and go to: `http://127.0.0.1:8000/docs`
+- **Use the `/ask` endpoint**: Click on it, then "Try it out", enter your question, and execute.

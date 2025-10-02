@@ -1,0 +1,41 @@
+# Python/Backend Ignores
+.venv/
+__pycache__/
+*.pyc
+*.log
+# If you are caching files:
+/vector_store/ 
+
+# Frontend Ignores (Example)
+/frontend/node_modules/
+/frontend/dist/
+
+# System/IDE Ignores
+.DS_Store
+.idea/
+
+# Backend environment files (do not commit secrets)
+/Backend/.env
+/Backend/.env.*
+/backend/.env
+/backend/.env.*
+
+# Ignore environment files everywhere (but keep examples/samples)
+**/.env
+**/.env.*
+!**/.env.example
+!**/.env.sample
+
+# Ignore local overrides and other secret/config files
+**/.env.local
+**/.env.*.local
+**/.envrc
+**/.secrets
+**/secrets.json
+**/credentials
+**/.vault
+**/.aws/credentials
+
+# Ignore any accidental Backend git directory/file
+/Backend/.git
+/backend/.git
