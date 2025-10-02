@@ -4,10 +4,11 @@ pydantic
 pydantic-settings
 python-dotenv
 sentence-transformers
-pdfplumber 
 groq
 httpx
 numpy
 chromadb
 scikit-learn
 cachetools
+pdfplumber
+PyPDF2

@@ -8,7 +8,7 @@ load_dotenv()
 
 class Settings(BaseSettings):
     # --- File Paths ---
-    BASE_DIR: Path = Path(__file__).resolve().parent.parent
+    BASE_DIR: Path = Path(__file__).resolve().parent
     PDF_DIR: Path = BASE_DIR / "pdfs"
     VECTOR_DB_DIR: Path = BASE_DIR / "vector_store"
 
@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # --- LLM Provider ---
     GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY")
-    LLM_MODEL: str = "groq"
+    LLM_MODEL: str = "llama-3.1-8b-instant"
 
     # --- Semantic Cache ---
     CACHE_COLLECTION_NAME: str = "semantic_cache"
