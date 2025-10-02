@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Forward the request to your backend
-    const backendResponse = await fetch('http://localhost:8000/chat', {
+    const backendResponse = await fetch('http://localhost:8000/ask', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

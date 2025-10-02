@@ -33,18 +33,37 @@ Steps:
 6. Verify:
    - Open the API URL (e.g., http://localhost:8000) or run provided health checks.
 
-## Quickstart — Frontend (if present)
+## Quickstart — Frontend (Next.js)
 Prerequisites:
-- Node.js (LTS) and npm/yarn
+- Node.js (LTS) and npm or yarn
 
-Steps:
+Development:
 1. cd Frontend
 2. Install packages:
-   - npm install or yarn
-3. Set any frontend environment variables (see Frontend/.env.example)
-4. Start the dev server:
-   - npm start or yarn start
-5. The frontend should proxy to the backend or be configured to call backend API endpoints.
+   - npm install
+3. Start dev server:
+   - npm run dev
+
+Production build & run (fixes the ".next" missing error):
+1. cd Frontend
+2. Install dependencies (if not already done):
+   - npm install
+3. Build the app (this creates the .next directory):
+   - npm run build
+4. Start the production server:
+   - npm start
+   - OR run: npx next start -p <PORT>
+
+Troubleshooting the error "Could not find a production build in the '.next' directory":
+- Cause: You attempted to run a production server (next start or npm start) without first running next build.
+- Fix:
+  1. From the Frontend folder run npm install && npm run build.
+  2. Then run npm start (or npx next start).
+- If you have a custom start script, ensure it runs next start (not next dev) and that build completes successfully.
+- If using a CI/CD pipeline, ensure your pipeline runs npm ci/install and npm run build before starting or deploying.
+
+Automated convenience (Windows):
+- See scripts/build-frontend.ps1 (in scripts/) to build and optionally start the Frontend on Windows.
 
 ## Environment & Secrets
 - All environment files are ignored by .gitignore. Use `.env.example` as a template.
