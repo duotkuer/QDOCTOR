@@ -4,40 +4,41 @@ import { NextRequest, NextResponse } from 'next/server';
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const { message, sessionId } = body;
+    const { message } = body;
 
-    // Validate required fields
-    if (!message || !sessionId) {
+    if (!message) {
+      return NextResponse.json({ error: 'Message is required' }, { status: 400 });
+    }
+
+    const payload = {
+      question: message,                 // map frontend -> backend field
+      top_k: Number(body.top_k) || 5     // optional param
+    };
+
+    const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:8000';
+    const backendResponse = await fetch(`${BACKEND}/ask`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+
+    const respText = await backendResponse.text();
+
+    if (!backendResponse.ok) {
+      // return backend validation / error details for debugging
+      console.error('Backend error:', backendResponse.status, respText);
       return NextResponse.json(
-        { error: 'Message and sessionId are required' },
-        { status: 400 }
+        { error: 'Backend error', detail: respText },
+        { status: backendResponse.status }
       );
     }
 
-    // Forward the request to your backend
-    const backendResponse = await fetch('http://localhost:8000/ask', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        message,
-        sessionId,
-      }),
-    });
-
-    if (!backendResponse.ok) {
-      throw new Error(`Backend responded with status: ${backendResponse.status}`);
-    }
-
-    const data = await backendResponse.json();
+    let data;
+    try { data = JSON.parse(respText); } catch { data = respText; }
 
     return NextResponse.json(data);
   } catch (error) {
     console.error('Error forwarding request to backend:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
   }
 }

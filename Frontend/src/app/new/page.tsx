@@ -56,7 +56,11 @@ const ChatScreen = () => {
         let sources: string[] = [];
 
         // Handle your specific backend response structure
-        if (parsedResponse.response) {
+        if (parsedResponse.answer) {
+          responseContent = parsedResponse.answer;
+          // Correctly map from context objects to filename strings
+          sources = parsedResponse.context?.map((c: any) => c.file_name) || [];
+        } else if (parsedResponse.response) {
           responseContent = parsedResponse.response;
           sources = parsedResponse.context_sources || [];
         } else if (parsedResponse.message) {
@@ -110,6 +114,62 @@ const ChatScreen = () => {
     }
   }, [searchParams]);
 
+  const handleSubmit = async (message: string) => {
+    if (!message.trim()) return;
+
+    const userMessage: Message = {
+      id: Date.now(),
+      type: 'user',
+      content: message,
+      timestamp: new Date()
+    };
+    setMessages(prev => [...prev, userMessage]);
+    setIsTyping(true);
+
+    try {
+      const response = await fetch('/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.detail || 'An error occurred');
+      }
+
+      const data = await response.json();
+
+      let responseContent = "Sorry, I couldn't process the response.";
+      let sources: string[] = [];
+
+      if (data.answer) {
+        responseContent = data.answer;
+        sources = data.context?.map((c: any) => c.file_name).filter(Boolean) || [];
+      }
+
+      const assistantMessage: Message = {
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: responseContent,
+        sources: sources,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, assistantMessage]);
+
+    } catch (error) {
+      const errorMessage: Message = {
+        id: Date.now() + 1,
+        type: 'assistant',
+        content: `Sorry, I encountered an error: ${error instanceof Error ? error.message : String(error)}`,
+        timestamp: new Date()
+      };
+      setMessages(prev => [...prev, errorMessage]);
+    } finally {
+      setIsTyping(false);
+    }
+  };
+
   const suggestionButtons = [
     "Search then answer",
     "What's your favorite hobby?",
@@ -117,75 +177,14 @@ const ChatScreen = () => {
   ];
 
   const handleMessageSent = (message: string, response: any) => {
-    // If response is null, this is the first call to add user message immediately
-    if (response === null) {
-      const userMessage: Message = {
-        id: Date.now(),
-        type: 'user',
-        content: message,
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, userMessage]);
-      setIsTyping(true);
-      return;
-    }
-
-    // This is the second call with the actual response
-    setIsTyping(false);
-
-    // Extract response content and sources
-    let responseContent = "I received your message!"; // fallback
-    let sources: string[] = [];
-
-    if (response.error) {
-      responseContent = response.response || "Sorry, I encountered an error. Please try again.";
-    } else if (response.response) {
-      responseContent = response.response;
-      sources = response.context_sources || [];
-    } else if (response.message) {
-      responseContent = response.message;
-    } else if (response.content) {
-      responseContent = response.content;
-    } else if (response.data) {
-      responseContent = response.data;
-    } else if (typeof response === 'string') {
-      responseContent = response;
-    }
-
-    // Add assistant response
-    const assistantMessage: Message = {
-      id: Date.now() + 1,
-      type: 'assistant',
-      content: responseContent,
-      sources: sources,
-      timestamp: new Date()
-    };
-    setMessages(prev => [...prev, assistantMessage]);
+    // This function is now obsolete and will be replaced by handleSubmit.
+    // We are keeping it here to avoid breaking ChatCard immediately,
+    // but the logic is now in handleSubmit.
+    console.warn("handleMessageSent is deprecated. Use handleSubmit.");
   };
 
   const handleSuggestionClick = (suggestion: string) => {
-    // Add user message immediately
-    const userMessage: Message = {
-      id: Date.now(),
-      type: 'user',
-      content: suggestion,
-      timestamp: new Date()
-    };
-
-    setMessages(prev => [...prev, userMessage]);
-    setIsTyping(true);
-
-    // Simulate assistant response
-    setTimeout(() => {
-      const response: Message = {
-        id: Date.now() + 1,
-        type: 'assistant',
-        content: "I'd be happy to help you with that! Let me know if you need any specific information or assistance.",
-        timestamp: new Date()
-      };
-      setMessages(prev => [...prev, response]);
-      setIsTyping(false);
-    }, 1500);
+    handleSubmit(suggestion);
   };
 
   return (
@@ -288,18 +287,20 @@ const ChatScreen = () => {
                   </div>
 
                   {/* Show sources if available */}
-                  {/* {message.type === 'assistant' && message.sources && message.sources.length > 0 && (
+                  {message.type === 'assistant' && message.sources && message.sources.length > 0 && (
                     <div className="mb-2 text-sm text-gray-500">
                       <div className="font-medium mb-1">Sources:</div>
                       <div className="flex flex-wrap gap-1">
-                        {message.sources.map((source, index) => (
+                        {message.sources
+                          .filter(source => typeof source === 'string') // Add defensive filter
+                          .map((source, index) => (
                           <span key={index} className="px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-xs">
                             {source.replace('.pdf', '')}
                           </span>
                         ))}
                       </div>
                     </div>
-                  )} */}
+                  )}
 
                   {message.type === 'assistant' && (
                     <div className="flex items-center space-x-4 text-gray-500">
@@ -374,7 +375,7 @@ const ChatScreen = () => {
 
       {/* Fixed Input Area at Bottom */}
       <div className="flex-shrink-0 border-t border-border">
-        <ChatCard onMessageSent={handleMessageSent} />
+        <ChatCard onMessageSent={handleSubmit} />
       </div>
     </div>
   );

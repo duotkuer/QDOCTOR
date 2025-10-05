@@ -1,5 +1,7 @@
 import asyncio
+import os
 from fastapi import FastAPI, HTTPException
+from fastapi.middleware.cors import CORSMiddleware
 from schemas import QueryRequest, QueryResponse, ContextChunk
 from rag import RAGService
 from guardrails import GuardrailService
@@ -24,8 +26,24 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# --- CORS (allow browser preflight requests) ---
+origins = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000"
+]
+env_origins = os.environ.get("FRONTEND_ORIGINS")
+if env_origins:
+    origins = [o.strip() for o in env_origins.split(",") if o.strip()]
+
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=origins,
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 # --- Service Initialization ---
-# These are initialized once at startup and shared across requests.
 rag_service = RAGService()
 guardrail_service = GuardrailService()
 cache_service = CacheService()

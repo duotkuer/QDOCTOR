@@ -7,77 +7,28 @@ import { Plus, Mic, Send } from "lucide-react";
 import { useRouter } from "next/navigation";
 
 interface ChatCardProps {
-  onMessageSent?: (message: string, response: any) => void;
+  onMessageSent?: (message: string) => void;
   disabled?: boolean;
 }
 
 export default function ChatCard({ onMessageSent, disabled = false }: ChatCardProps) {
-    const router = useRouter();
     const textareaRef = useRef<HTMLTextAreaElement>(null);
     const [input, setInput] = useState("");
-    const [isLoading, setIsLoading] = useState(false);
-    const [sessionId] = useState(() => {
-        // Generate a unique session ID
-        return `session_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-    });
 
     useEffect(() => {
         textareaRef.current?.focus();
     }, []);
 
     const handleSendMessage = async () => {
-        if (!input.trim() || isLoading || disabled) return;
+        if (!input.trim() || disabled) return;
 
         const message = input.trim();
-        setInput("");
-        setIsLoading(true);
-
-        // If we have a callback (chat page), immediately add user message and show typing
+        
         if (onMessageSent) {
-            // Call onMessageSent with just the user message first to add it immediately
-            onMessageSent(message, null);
+            onMessageSent(message);
         }
-
-        try {
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    message,
-                    sessionId,
-                }),
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            console.log('Response from backend:', data);
-            
-            if (onMessageSent) {
-                // Call onMessageSent again with the response to add assistant message
-                onMessageSent(message, data);
-            } else {
-                // If no callback (home page), redirect to /new with state
-                router.push(`/new?sessionId=${sessionId}&initialMessage=${encodeURIComponent(message)}&response=${encodeURIComponent(JSON.stringify(data))}`);
-            }
-            
-        } catch (error) {
-            console.error('Error sending message:', error);
-            // Handle error - you might want to add error state handling here
-            if (onMessageSent) {
-                // Add error message
-                onMessageSent(message, { 
-                    response: "Sorry, I encountered an error while processing your request. Please try again.",
-                    error: true 
-                });
-            }
-        } finally {
-            setIsLoading(false);
-        }
+        
+        setInput("");
     };
 
     const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -99,7 +50,7 @@ export default function ChatCard({ onMessageSent, disabled = false }: ChatCardPr
                                 value={input}
                                 onChange={(e) => setInput(e.target.value)}
                                 onKeyPress={handleKeyPress}
-                                disabled={isLoading || disabled}
+                                disabled={disabled}
                                 className="text-primary text-lg w-full outline-0 resize-none p-4 shadow-none bg-transparent border-0 placeholder-primary focus-visible:ring-0 focus-visible:ring-offset-0 scrollbar-hide"
                             />
                         </div>
@@ -133,7 +84,7 @@ export default function ChatCard({ onMessageSent, disabled = false }: ChatCardPr
                             <Button
                                 size="icon"
                                 onClick={handleSendMessage}
-                                disabled={isLoading || disabled}
+                                disabled={disabled}
                                 className="h-6 w-6 rounded-lg shadow-none bg-border text-primary p-4 overflow-hidden relative"
                             >
                                 <AnimatePresence mode="wait">
@@ -146,7 +97,7 @@ export default function ChatCard({ onMessageSent, disabled = false }: ChatCardPr
                                             transition={{ duration: 0.2 }}
                                             className="absolute inset-0 flex items-center justify-center"
                                         >
-                                            <Send className={`h-5 w-5 ${isLoading ? 'animate-pulse' : ''}`} />
+                                            <Send className={`h-5 w-5 ${disabled ? 'animate-pulse' : ''}`} />
                                         </motion.span>
                                     ) : (
                                         <motion.span

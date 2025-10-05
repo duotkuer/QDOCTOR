@@ -1,0 +1,33 @@
+services:
+  python-backend:
+    build:
+      context: ./Backend
+      dockerfile: ../BackendDockerfile
+    restart: unless-stopped
+    init: true
+    env_file: ./Backend/.env
+    # If you don't have a .env file, comment out the above line
+    ports:
+      - "8000:8000"  # FastAPI default port
+    networks:
+      - appnet
+    # If you add a database, add 'depends_on' here
+
+  typescript-frontend:
+    build:
+      context: ./Frontend
+      dockerfile: ../FrontendDockerfile
+    restart: unless-stopped
+    init: true
+    ports:
+      - "3000:3000"  # Next.js default port
+    networks:
+      - appnet
+    depends_on:
+      - python-backend  # Ensure backend is up before frontend
+    # env_file: ./Frontend/.env  # Uncomment if .env file exists
+
+# Shared network for inter-service communication
+networks:
+  appnet:
+    driver: bridge

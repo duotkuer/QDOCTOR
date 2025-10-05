@@ -96,6 +96,47 @@ Automated convenience (Windows):
 - Follow coding standards used in Backend and Frontend.
 - Include tests for new features and document behavior.
 
+
+## Quickstart — Docker
+
+This project provides Dockerfiles for both the Backend (Python/FastAPI) and Frontend (Next.js/TypeScript) services, along with a Docker Compose configuration for easy setup.
+
+### Requirements
+- Docker and Docker Compose installed on your system
+- Backend requires Python 3.11 (handled by the Dockerfile)
+- Frontend uses Node.js version 22.13.1 (set in the Dockerfile)
+
+### Environment Variables
+- The Backend service expects a `.env` file in `Backend/` (see `Backend/.env.example` for required variables)
+- The Frontend service can use a `.env` file in `Frontend/` (uncomment `env_file` in the compose file if needed)
+
+### Build and Run
+1. Ensure your environment files are set up:
+   - Copy `Backend/.env.example` to `Backend/.env` and fill in required values
+   - (Optional) Add `Frontend/.env` if your frontend needs environment variables
+2. From the project root, run:
+   ```sh
+   docker compose up --build
+   ```
+   This will build and start both services.
+
+### Ports
+- Backend (FastAPI): exposed on **8000** (`http://localhost:8000`)
+- Frontend (Next.js): exposed on **3000** (`http://localhost:3000`)
+
+### Special Configuration
+- The Backend Dockerfile installs system dependencies for PDF processing (e.g., `poppler-utils`, `libjpeg-dev`)
+- Both services run as non-root users for security
+- The Backend mounts its `.env` file via the `env_file` directive in Compose
+- Both services share a Docker network (`appnet`) for internal communication
+- The Frontend depends on the Backend and will wait for it to be available
+
+### Notes
+- If you do not have a `Backend/.env` file, comment out the `env_file` line in the Compose file
+- For custom database or additional services, extend the Compose file as needed
+
+For troubleshooting and more details, see the sections above on local development and environment setup.
+
 ## License
 Add your project license here (e.g., MIT, Apache-2.0). Replace this section with the chosen license text or a link to LICENSE.
 

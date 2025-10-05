@@ -1,0 +1,69 @@
+# Version control
+.git/
+.gitignore
+.svn/
+.hg/
+
+# Python artifacts
+__pycache__/
+*.pyc
+*.pyo
+.pytest_cache/
+.coverage
+.venv/
+
+# Node.js artifacts
+node_modules/
+npm-debug.log
+yarn-debug.log
+.next/
+
+# Build outputs
+build/
+dist/
+out/
+
+# IDE/editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Test and debug files
+test/
+tests/
+debug/
+*.log
+
+# Environment and secrets
+.env*
+*.env
+*.pem
+*.key
+*.crt
+config.local.*
+*.local.yml
+.local/
+
+# Temporary files and folders
+tmp/
+temp/
+*.tmp
+
+# Documentation
+README*
+*.md
+docs/
+
+# Project-specific
+Backend/pdfs/
+Frontend/public/
+
+# SQLite and binary data
+*.sqlite3
+*.bin
+*.pickle
+
+# Ignore Docker files (if not needed in build context)
+Dockerfile*
+docker-compose*
