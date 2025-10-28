@@ -12,10 +12,10 @@ export async function POST(request: NextRequest) {
 
     const payload = {
       question: message,                 // map frontend -> backend field
-      top_k: Number(body.top_k) || 5     // optional param
+      top_k: 3     // optional param
     };
 
-    const BACKEND = process.env.BACKEND_URL ?? 'http://localhost:8000';
+    const BACKEND = process.env.BACKEND_URL ?? 'http://127.0.0.1:8000';
     const backendResponse = await fetch(`${BACKEND}/ask`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
