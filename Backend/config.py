@@ -19,7 +19,7 @@ class Settings(BaseSettings):
     
     # --- LLM Provider ---
     GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY")
-    LLM_MODEL: str = "llama-3.1-8b-instant"
+    LLM_MODEL: str = "openai/gpt-oss-120b"
 
     # --- Semantic Cache ---
     CACHE_COLLECTION_NAME: str = "semantic_cache"
