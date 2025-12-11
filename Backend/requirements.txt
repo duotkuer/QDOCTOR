@@ -7,7 +7,7 @@ sentence-transformers
 groq
 httpx
 numpy
-chromadb
+qdrant-client
 scikit-learn
 cachetools
 pdfplumber

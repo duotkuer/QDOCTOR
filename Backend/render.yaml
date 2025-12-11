@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: qdoctor-backend
+    env: python
+    plan: standard
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn main:app --host 0.0.0.0 --port $PORT --workers 4
+    
+    # Environment variables (non-sensitive)
+    envVars:
+      - key: GROQ_MODEL
+        value: openai/gpt-oss-120b
+      - key: FRONTEND_ORIGINS
+        value: http://localhost:3000,https://qdoctor-ai-frontend.vercel.app
+    
+    # Secret environment variables (managed via Render dashboard)
+    # These should NOT be committed to git
+    secretFiles:
+      - name: .env.production
+        contents: |
+          # Secrets to be configured in Render dashboard:
+          # GROQ_API_KEY=<your-key>
+          # QDRANT_URL=<your-url>
+          # QDRANT_API_KEY=<your-key>
+    
+    # Health check
+    healthCheckPath: /health
+    healthCheckInterval: 30
+    
+    # Auto-deploy from GitHub
+    repo: https://github.com/duotkuer/QDOCTOR
+    branch: main
+    autoDeploy: true

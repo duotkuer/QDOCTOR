@@ -14,11 +14,14 @@ __pycache__/
 .DS_Store
 .idea/
 
-# Backend environment files (do not commit secrets)
-/Backend/.env
-/Backend/.env.*
-/backend/.env
-/backend/.env.*
+```bash
+# Backend/.gitignore
+.env
+.env.production
+.env.local
+*.key
+*.pem
+```bash
 
 # Ignore environment files everywhere (but keep examples/samples)
 **/.env

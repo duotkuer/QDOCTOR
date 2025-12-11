@@ -1,4 +1,5 @@
-import chromadb
+from qdrant_client import QdrantClient
+from qdrant_client.http.models import Distance, VectorParams, PointStruct
 import hashlib
 import pdfplumber
 from pathlib import Path
@@ -13,13 +14,37 @@ class RAGService:
         print("Initializing RAGService...")
         self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
         
-        # Initialize persistent ChromaDB client
-        self.db_client = chromadb.PersistentClient(path=str(settings.VECTOR_DB_DIR))
-        self.collection = self.db_client.get_or_create_collection(name="documents")
+        # Initialize Qdrant client
+        if settings.QDRANT_API_KEY:
+            self.client = QdrantClient(
+                url=settings.QDRANT_URL,
+                api_key=settings.QDRANT_API_KEY
+            )
+        else:
+            self.client = QdrantClient(url=settings.QDRANT_URL)
+        
+        # Ensure collection exists
+        self._ensure_collection_exists()
         
         # Initialize Groq client
         self.groq_client = Groq(api_key=settings.GROQ_API_KEY)
         print("RAGService initialized.")
+
+    def _ensure_collection_exists(self):
+        """Creates the collection if it doesn't exist."""
+        try:
+            self.client.get_collection(settings.QDRANT_COLLECTION_NAME)
+            print(f"Collection '{settings.QDRANT_COLLECTION_NAME}' already exists.")
+        except Exception:
+            print(f"Creating collection '{settings.QDRANT_COLLECTION_NAME}'...")
+            self.client.create_collection(
+                collection_name=settings.QDRANT_COLLECTION_NAME,
+                vectors_config=VectorParams(
+                    size=settings.EMBEDDING_DIMENSION,
+                    distance=Distance.COSINE
+                )
+            )
+            print(f"Collection '{settings.QDRANT_COLLECTION_NAME}' created successfully.")
 
     def _pdf_to_text(self, path: Path) -> str:
         """Extracts text from a single PDF file."""
@@ -42,7 +67,7 @@ class RAGService:
         return chunks
 
     def build_index(self):
-        """Processes PDFs from the configured directory and builds the ChromaDB index."""
+        """Processes PDFs from the configured directory and builds the Qdrant index."""
         print(f"Checking for new PDFs in {settings.PDF_DIR}...")
         pdf_files = list(settings.PDF_DIR.glob("*.pdf"))
         
@@ -55,13 +80,21 @@ class RAGService:
             for i, chunk in enumerate(chunks):
                 chunk_id = hashlib.sha1(f"{pdf_file.name}:{i}".encode()).hexdigest()
                 
-                # Check if this chunk ID already exists in the collection
-                if not self.collection.get(ids=[chunk_id])['ids']:
-                    documents_to_add.append({
-                        "id": chunk_id,
-                        "text": chunk,
-                        "metadata": {"source": pdf_file.name}
-                    })
+                # Check if this chunk ID already exists in Qdrant
+                try:
+                    self.client.retrieve(
+                        collection_name=settings.QDRANT_COLLECTION_NAME,
+                        ids=[int(chunk_id[:15], 16) % (2**63)]  # Convert hash to valid ID
+                    )
+                    continue  # Skip if exists
+                except:
+                    pass  # Proceed if doesn't exist
+                
+                documents_to_add.append({
+                    "id": chunk_id,
+                    "text": chunk,
+                    "metadata": {"source": pdf_file.name}
+                })
 
         if not documents_to_add:
             print("No new documents to index. Vector store is up to date.")
@@ -72,11 +105,22 @@ class RAGService:
         texts = [doc['text'] for doc in documents_to_add]
         embeddings = self.model.encode(texts, convert_to_tensor=False, show_progress_bar=True)
         
-        self.collection.add(
-            ids=[doc['id'] for doc in documents_to_add],
-            documents=texts,
-            embeddings=embeddings.tolist(),
-            metadatas=[doc['metadata'] for doc in documents_to_add]
+        # Prepare points for Qdrant
+        points = [
+            PointStruct(
+                id=int(doc['id'][:15], 16) % (2**63),  # Convert hash to valid positive ID
+                vector=embedding.tolist(),
+                payload={
+                    "text": doc['text'],
+                    "source": doc['metadata']['source']
+                }
+            )
+            for doc, embedding in zip(documents_to_add, embeddings)
+        ]
+        
+        self.client.upsert(
+            collection_name=settings.QDRANT_COLLECTION_NAME,
+            points=points
         )
         print(f"Successfully indexed {len(documents_to_add)} chunks.")
         return len(documents_to_add)
@@ -85,20 +129,20 @@ class RAGService:
         """Retrieves top_k relevant context chunks from the vector store."""
         query_embedding = self.model.encode([query], convert_to_tensor=False)[0].tolist()
         
-        results = self.collection.query(
-            query_embeddings=[query_embedding],
-            n_results=top_k
+        results = self.client.search(
+            collection_name=settings.QDRANT_COLLECTION_NAME,
+            query_vector=query_embedding,
+            limit=top_k
         )
         
         retrieved_chunks = []
-        if results:
-            for i in range(len(results['ids'][0])):
-                retrieved_chunks.append({
-                    "id": results['ids'][0][i],
-                    "text": results['documents'][0][i],
-                    "source": results['metadatas'][0][i]['source'],
-                    "score": 1 - results['distances'][0][i] # Convert distance to similarity score
-                })
+        for result in results:
+            retrieved_chunks.append({
+                "id": str(result.id),
+                "text": result.payload.get('text', ''),
+                "source": result.payload.get('source', 'N/A'),
+                "score": result.score
+            })
         return retrieved_chunks
     
     def _build_prompt(self, contexts: List[dict], question: str) -> Tuple[str, str]:

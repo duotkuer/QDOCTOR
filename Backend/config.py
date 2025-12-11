@@ -12,8 +12,14 @@ class Settings(BaseSettings):
     PDF_DIR: Path = BASE_DIR / "pdfs"
     VECTOR_DB_DIR: Path = BASE_DIR / "vector_store"
 
+    # --- Qdrant Configuration ---
+    QDRANT_URL: str = os.environ.get("QDRANT_URL", "http://localhost:6333")
+    QDRANT_API_KEY: str = os.environ.get("QDRANT_API_KEY", "")
+    QDRANT_COLLECTION_NAME: str = "documents"
+    
     # --- RAG & Embedding ---
     EMBEDDING_MODEL: str = "all-MiniLM-L6-v2"
+    EMBEDDING_DIMENSION: int = 384  # Dimension for all-MiniLM-L6-v2
     CHUNK_SIZE: int = 1000
     CHUNK_OVERLAP: int = 200
     
