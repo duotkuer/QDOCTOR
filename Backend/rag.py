@@ -7,11 +7,14 @@ from typing import List, Dict, Tuple
 from sentence_transformers import SentenceTransformer
 from groq import Groq
 import httpx
+import logging
 from config import settings
+
+logger = logging.getLogger(__name__)
 
 class RAGService:
     def __init__(self):
-        print("Initializing RAGService...")
+        logger.info("Initializing RAGService...")
         self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
         
         # Initialize Qdrant client
@@ -28,23 +31,27 @@ class RAGService:
         
         # Initialize Groq client
         self.groq_client = Groq(api_key=settings.GROQ_API_KEY)
-        print("RAGService initialized.")
+        logger.info("RAGService initialized successfully.")
 
     def _ensure_collection_exists(self):
         """Creates the collection if it doesn't exist."""
         try:
             self.client.get_collection(settings.QDRANT_COLLECTION_NAME)
-            print(f"Collection '{settings.QDRANT_COLLECTION_NAME}' already exists.")
-        except Exception:
-            print(f"Creating collection '{settings.QDRANT_COLLECTION_NAME}'...")
-            self.client.create_collection(
-                collection_name=settings.QDRANT_COLLECTION_NAME,
-                vectors_config=VectorParams(
-                    size=settings.EMBEDDING_DIMENSION,
-                    distance=Distance.COSINE
+            logger.info(f"Collection '{settings.QDRANT_COLLECTION_NAME}' already exists.")
+        except Exception as e:
+            logger.info(f"Creating collection '{settings.QDRANT_COLLECTION_NAME}'...")
+            try:
+                self.client.create_collection(
+                    collection_name=settings.QDRANT_COLLECTION_NAME,
+                    vectors_config=VectorParams(
+                        size=settings.EMBEDDING_DIMENSION,
+                        distance=Distance.COSINE
+                    )
                 )
-            )
-            print(f"Collection '{settings.QDRANT_COLLECTION_NAME}' created successfully.")
+                logger.info(f"Collection '{settings.QDRANT_COLLECTION_NAME}' created successfully.")
+            except Exception as create_error:
+                logger.error(f"Failed to create collection: {create_error}")
+                raise
 
     def _pdf_to_text(self, path: Path) -> str:
         """Extracts text from a single PDF file."""
@@ -52,7 +59,7 @@ class RAGService:
             with pdfplumber.open(path) as pdf:
                 return "\n\n".join(page.extract_text() for page in pdf.pages if page.extract_text())
         except Exception as e:
-            print(f"Error reading {path.name}: {e}")
+            logger.warning(f"Error reading {path.name}: {e}")
             return ""
 
     def _chunk_text(self, text: str) -> List[str]:
@@ -68,7 +75,7 @@ class RAGService:
 
     def build_index(self):
         """Processes PDFs from the configured directory and builds the Qdrant index."""
-        print(f"Checking for new PDFs in {settings.PDF_DIR}...")
+        logger.info(f"Checking for new PDFs in {settings.PDF_DIR}...")
         pdf_files = list(settings.PDF_DIR.glob("*.pdf"))
         
         documents_to_add = []
@@ -97,10 +104,10 @@ class RAGService:
                 })
 
         if not documents_to_add:
-            print("No new documents to index. Vector store is up to date.")
+            logger.info("No new documents to index. Vector store is up to date.")
             return 0
 
-        print(f"Found {len(documents_to_add)} new chunks to index...")
+        logger.info(f"Found {len(documents_to_add)} new chunks to index...")
         
         texts = [doc['text'] for doc in documents_to_add]
         embeddings = self.model.encode(texts, convert_to_tensor=False, show_progress_bar=True)
@@ -122,7 +129,7 @@ class RAGService:
             collection_name=settings.QDRANT_COLLECTION_NAME,
             points=points
         )
-        print(f"Successfully indexed {len(documents_to_add)} chunks.")
+        logger.info(f"Successfully indexed {len(documents_to_add)} chunks.")
         return len(documents_to_add)
 
     def retrieve(self, query: str, top_k: int) -> List[Dict]:
@@ -185,5 +192,5 @@ class RAGService:
             )
             return chat_completion.choices[0].message.content
         except Exception as e:
-            print(f"Error during LLM call: {e}")
+            logger.error(f"Error during LLM call: {e}")
             raise RuntimeError(f"Failed to get a response from the LLM provider: {e}")

@@ -1,5 +1,5 @@
-import asyncio
 import os
+import logging
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from schemas import QueryRequest, QueryResponse, ContextChunk
@@ -7,17 +7,24 @@ from rag import RAGService
 from guardrails import GuardrailService
 from memory import CacheService
 from config import settings
-
 from contextlib import asynccontextmanager
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+logger = logging.getLogger(__name__)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    print("Application startup...")
+    logger.info("Application startup...")
     if not settings.GROQ_API_KEY:
+        logger.error("GROQ_API_KEY environment variable not set!")
         raise ValueError("GROQ_API_KEY environment variable not set!")
-    print("Services initialized successfully.")
+    logger.info("Services initialized successfully.")
     yield
-    # (Optional) Add any shutdown/cleanup logic here
+    logger.info("Application shutdown...")
 
 app = FastAPI(
     title="QDOCTOR Clinical Assistant",
@@ -27,13 +34,14 @@ app = FastAPI(
 )
 
 # --- CORS (allow browser preflight requests) ---
-origins = [
-    "http://localhost:3000",
-    "http://127.0.0.1:3000"
-]
 env_origins = os.environ.get("FRONTEND_ORIGINS")
 if env_origins:
     origins = [o.strip() for o in env_origins.split(",") if o.strip()]
+else:
+    # Fallback to localhost for development
+    origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
+
+logger.info(f"CORS origins configured: {origins}")
 
 app.add_middleware(
     CORSMiddleware,

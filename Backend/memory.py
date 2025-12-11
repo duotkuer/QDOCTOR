@@ -1,5 +1,6 @@
 import hashlib
 import json 
+import logging
 from typing import Optional, Tuple, List, Dict
 from cachetools import TTLCache
 from sentence_transformers import SentenceTransformer
@@ -9,9 +10,11 @@ import numpy as np
 from config import settings
 from schemas import QueryResponse, ContextChunk
 
+logger = logging.getLogger(__name__)
+
 class CacheService:
     def __init__(self):
-        print("Initializing CacheService...")
+        logger.info("Initializing CacheService...")
         # L1 Cache: Fast, in-memory, exact-match cache with a time-to-live
         self.l1_cache = TTLCache(maxsize=settings.SHORT_TERM_MAX_SIZE, ttl=settings.SHORT_TERM_TTL)
         
@@ -19,7 +22,7 @@ class CacheService:
         self.model = SentenceTransformer(settings.EMBEDDING_MODEL)
         self.db_client = chromadb.PersistentClient(path=str(settings.VECTOR_DB_DIR))
         self.l2_collection = self.db_client.get_or_create_collection(name=settings.CACHE_COLLECTION_NAME)
-        print("CacheService initialized.")
+        logger.info("CacheService initialized successfully.")
 
     def _make_key(self, text: str) -> str:
         """Creates a deterministic SHA256 hash for a given text string."""
@@ -35,7 +38,7 @@ class CacheService:
         key = self._make_key(query)
         cached_l1 = self.l1_cache.get(key)
         if cached_l1:
-            print(f"L1 Cache HIT for key: {key[:8]}")
+            logger.debug(f"L1 Cache HIT for key: {key[:8]}")
             return QueryResponse(**cached_l1)
 
         # --- L2 Cache Check (Semantic Match) ---
@@ -57,7 +60,7 @@ class CacheService:
             similarity = cosine_similarity([query_embedding], [cached_embedding])[0][0]
             
             if similarity >= settings.SIMILARITY_THRESHOLD:
-                print(f"L2 Cache HIT with similarity {similarity:.4f}")
+                logger.debug(f"L2 Cache HIT with similarity {similarity:.4f}")
                 cached_answer = match_data['metadatas'][0]['answer']
                 context_json_string = match_data['metadatas'][0].get('context')
                 
@@ -74,25 +77,28 @@ class CacheService:
                 self.l1_cache[key] = response.model_dump()
                 return response
 
-        print("Cache MISS")
+        logger.debug("Cache MISS")
         return None
 
     def set(self, query: str, response: QueryResponse):
         """Stores a new question-answer pair in both L1 and L2 caches."""
         key = self._make_key(query)
         
-        # Store in L1 cache (no change needed here)
-        self.l1_cache[key] = response.model_dump()
-        print(f"Stored in L1 Cache with key: {key[:8]}")
+        try:
+            # Store in L1 cache
+            self.l1_cache[key] = response.model_dump()
+            logger.debug(f"Stored in L1 Cache with key: {key[:8]}")
 
-        # Store in L2 cache
-        query_embedding = self.model.encode([query])[0].tolist()
-        context_dicts = [c.model_dump() for c in response.context] if response.context else []
-        context_json_string = json.dumps(context_dicts) 
-        
-        self.l2_collection.add(
-            ids=[key],
-            embeddings=[query_embedding],
-            metadatas=[{"query": query, "answer": response.answer, "context": context_json_string}]
-        )
-        print(f"Stored in L2 Cache with key: {key[:8]}")
+            # Store in L2 cache
+            query_embedding = self.model.encode([query])[0].tolist()
+            context_dicts = [c.model_dump() for c in response.context] if response.context else []
+            context_json_string = json.dumps(context_dicts) 
+            
+            self.l2_collection.add(
+                ids=[key],
+                embeddings=[query_embedding],
+                metadatas=[{"query": query, "answer": response.answer, "context": context_json_string}]
+            )
+            logger.debug(f"Stored in L2 Cache with key: {key[:8]}")
+        except Exception as e:
+            logger.error(f"Error storing in cache: {e}")
