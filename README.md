@@ -5,7 +5,7 @@ QDOCTOR is an application scaffold for a doctor/patient assistant system. The re
 ## Repository layout
 - Backend/ — Python API, services, and server code (primary application logic)
 - Frontend/ — Optional UI assets (React/Vue/other) if present
-- vector_store/ — Local vector/cache storage (ignored by git)
+- vector_store/ — Local vector/cache storage
 
 ## Goals
 - Provide a minimal, production-approachable backend for clinical assistant features.
@@ -138,7 +138,7 @@ This project provides Dockerfiles for both the Backend (Python/FastAPI) and Fron
 For troubleshooting and more details, see the sections above on local development and environment setup.
 
 ## License
-Add your project license here (e.g., MIT, Apache-2.0). Replace this section with the chosen license text or a link to LICENSE.
+MIT, Apache-2.0
 
 ## Contact
-For questions or help, add maintainer contact information or link to your issue tracker.
+Email: duotkuerduot@gmail.com
